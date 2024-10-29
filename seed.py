@@ -1,7 +1,7 @@
 import random
 from datetime import datetime, timedelta
 from config import create_app
-from models import User, History
+from model.models import User, History
 from flask_bcrypt import Bcrypt
 from bson import ObjectId
 
