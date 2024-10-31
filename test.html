@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fall Detection Client</title>
+</head>
+<body>
+    <h1>Fall Detection Status</h1>
+    <div id="status">Waiting for data...</div>
+
+    <script>
+        // Tạo kết nối WebSocket tới server
+        const socket = new WebSocket('ws://localhost:81/websocket');
+
+        // Sự kiện khi kết nối được mở
+        socket.onopen = function() {
+            console.log('WebSocket connection established');
+        };
+
+        // Sự kiện khi nhận được thông điệp từ server
+        socket.onmessage = function(event) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = 'Prediction: ' + event.data;
+        };
+
+        // Sự kiện khi kết nối bị đóng
+        socket.onclose = function() {
+            console.log('WebSocket connection closed');
+        };
+
+        // Sự kiện khi xảy ra lỗi
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+    </script>
+</body>
+</html>
