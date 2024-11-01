@@ -1,15 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import send_from_directory
 from routes.history import history_bp
 from routes.predict import model, scaler
 from flask_cors import CORS
 from flask_sock import Sock
-import numpy as np
 import torch
 import pandas as pd
 from datetime import datetime, timezone
-from bson import ObjectId
-import pymongo
 from config import create_app
+import os
+import threading
 
 # Khởi tạo ứng dụng Flask và MongoDB từ create_app
 app, mongo = create_app()
@@ -23,15 +22,24 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Đăng ký blueprint cho route lịch sử
 app.register_blueprint(history_bp)
 
+# Route cho favicon.ico
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+# Danh sách các kết nối WebSocket clients
+websocket_clients = []
+
 # Route WebSocket để nhận dữ liệu và thực hiện dự đoán
 @sock.route('/websocket')
 def websocket(ws):
+    websocket_clients.append(ws)
     while True:
         data = ws.receive()
         print(f"data: {data}")
         if data:
             try:
-                # Tách phần tọa độ GPS và phần dữ liệu cảm biến
+                # Tách phần toạ độ GPS và phần dữ liệu cảm biến
                 try:
                     gps_data, sensor_data = data.split("|")
                     latitude, longitude = [float(value.strip()) for value in gps_data.split(",")]
@@ -58,7 +66,7 @@ def websocket(ws):
                 # Kết quả dự đoán
                 result = "fall" if predicted.item() == 0 else "nofall"
                 
-                # Lưu lịch sử với tọa độ GPS và trạng thái dự đoán
+                # Lưu lịch sử với toạ độ GPS và trạng thái dự đoán
                 history_entry = {
                     "accelX": features[0],
                     "accelY": features[1],
@@ -73,10 +81,15 @@ def websocket(ws):
                 }
                 mongo.db.history.insert_one(history_entry)
                 
-                # Gửi dữ liệu trở lại client
+                # Gửi dữ liệu trở lại tất cả các client
                 response_data = f"{latitude},{longitude}|{sensor_data}|{result}"
                 print(f"response_data: {response_data}")
-                ws.send(response_data)
+                for client in websocket_clients:
+                    try:
+                        client.send(response_data)
+                    except Exception as e:
+                        print(f"Error sending to client: {str(e)}")
+                        websocket_clients.remove(client)
             except Exception as e:
                 ws.send(f"Error: {str(e)}")
 

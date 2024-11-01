@@ -3,35 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fall Detection Client</title>
+    <title>WebSocket Client</title>
 </head>
 <body>
-    <h1>Fall Detection Status</h1>
-    <div id="status">Waiting for data...</div>
+    <h1>WebSocket Connection Demo</h1>
+    <div>
+        <label for="latitude">Latitude:</label>
+        <input type="text" id="latitude" placeholder="Enter latitude">
+    </div>
+    <div>
+        <label for="longitude">Longitude:</label>
+        <input type="text" id="longitude" placeholder="Enter longitude">
+    </div>
+    <div>
+        <label for="sensorData">Sensor Data (accelX,accelY,accelZ,gyroX,gyroY,gyroZ):</label>
+        <input type="text" id="sensorData" placeholder="Enter sensor data">
+    </div>
+    <button id="sendButton">Send Data</button>
+    <h3>Server Response:</h3>
+    <div id="responseContainer"></div>
 
     <script>
-        // Tạo kết nối WebSocket tới server
-        const socket = new WebSocket('ws://localhost:81/websocket');
+        const socket = new WebSocket('ws://192.168.2.53:81/websocket');
 
-        // Sự kiện khi kết nối được mở
-        socket.onopen = function() {
+        socket.onopen = function () {
             console.log('WebSocket connection established');
         };
 
-        // Sự kiện khi nhận được thông điệp từ server
-        socket.onmessage = function(event) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = 'Prediction: ' + event.data;
+        socket.onmessage = function (event) {
+            const responseContainer = document.getElementById('responseContainer');
+            const responseElement = document.createElement('p');
+            responseElement.innerText = `Server response: ${event.data}`;
+            responseContainer.appendChild(responseElement);
         };
 
-        // Sự kiện khi kết nối bị đóng
-        socket.onclose = function() {
+        socket.onerror = function (error) {
+            console.error('WebSocket error:', error);
+        };
+
+        socket.onclose = function () {
             console.log('WebSocket connection closed');
         };
 
-        // Sự kiện khi xảy ra lỗi
-        socket.onerror = function(error) {
-            console.error('WebSocket error:', error);
+        document.getElementById('sendButton').onclick = function () {
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            const sensorData = document.getElementById('sensorData').value;
+
+            if (latitude && longitude && sensorData) {
+                const dataToSend = `${latitude},${longitude}|${sensorData}`;
+                socket.send(dataToSend);
+                console.log(`Data sent: ${dataToSend}`);
+            } else {
+                alert('Please fill in all fields before sending.');
+            }
         };
     </script>
 </body>
